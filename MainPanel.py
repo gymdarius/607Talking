@@ -104,11 +104,11 @@ class MainPanel:
         #将发送消息滚动条与发送消息文本框绑定
         send_sc_bar["command"] = self.send_text.yview
         self.send_text["yscrollcommand"] = send_sc_bar.set
-
-        Button(main_frame, text="发送", bg="#4d88ff", font=("黑体", 14), fg="white", command=self.send_func) \
+        main_frame.columnconfigure(1, weight=1)
+        Button(main_frame, text="发送(Ctrl+Enter)", bg="#4d88ff", font=("黑体", 14), fg="white", command=self.send_func,width=20) \
             .grid(row=3, column=1, pady=5, padx=10, sticky=W, ipady=3, ipadx=10)
-        Button(main_frame, text="清空", bg="#4d88ff", font=("黑体", 14), fg="white", command=self.clear_send_text) \
-            .grid(row=3, column=1, pady=5, sticky=W, padx=(110, 0), ipady=3, ipadx=10)
+        Button(main_frame, text="清空(Esc)", bg="#4d88ff", font=("黑体", 14), fg="white", command=self.clear_send_text,width=20) \
+            .grid(row=3, column=1, pady=5, sticky=W, padx=(220, 0), ipady=3, ipadx=10)
         self.main_frame = main_frame
         main_frame.mainloop()
 
