@@ -151,7 +151,8 @@ def handle_private(_conn, addr):
     send_from=conn2user[_conn]
     content3=content[content.rfind('!#'):]
     content4=content3[2:]
-    msg="来自"+send_from+"的私聊： "+content4
+    msg="与"+send_from+"的私聊： "+content4
+    msg2="与"+send_to+"的私聊： "+content4
 
     
     for client in online_conn:
@@ -161,6 +162,11 @@ def handle_private(_conn, addr):
             send_string_with_length(client, "#!message#!")
             send_string_with_length(client, conn2user[_conn])
             send_string_with_length(client, msg)
+
+    # 发送给自己（消息发送者）
+    send_string_with_length(_conn, "#!message#!")
+    send_string_with_length(_conn, send_from)  # 或者用 send_from，如果你想要发送给自己同样的消息
+    send_string_with_length(_conn, msg2)
 
     return True
 
