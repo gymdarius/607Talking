@@ -18,7 +18,7 @@ class MainPanel:
         # 阻止默认的ESC键行为
         return 'break'
 
-    def __init__(self, username, send_func, close_callback):
+    def __init__(self, username, send_func, close_callback,start_phone):
         self.username = username
         self.friend_list = None
         self.message_text = None
@@ -26,6 +26,7 @@ class MainPanel:
         self.send_func = send_func
         self.close_callback = close_callback
         self.main_frame = None
+        self.start_phone = start_phone
 
     def show(self):
         global main_frame
@@ -91,7 +92,7 @@ class MainPanel:
         send_sc_bar = Scrollbar(main_frame)
         send_sc_bar.grid(row=2, column=1, sticky=E + N + S, padx=(0, 10), pady=10)
         #发送消息文本框
-        self.send_text = Text(main_frame, bg="white", height=11, highlightcolor="white",
+        self.send_text = Text(main_frame, bg="white", height=6, highlightcolor="white",
                               highlightbackground="#cc99ff", highlightthickness=3)
         # 绑定回车键
         self.send_text.bind('<Control-Return>', self.on_return_key)
@@ -106,9 +107,11 @@ class MainPanel:
         self.send_text["yscrollcommand"] = send_sc_bar.set
         main_frame.columnconfigure(1, weight=1)
         Button(main_frame, text="发送(Ctrl+Enter)", bg="#4d88ff", font=("黑体", 14), fg="white", command=self.send_func,width=20) \
-            .grid(row=3, column=1, pady=5, padx=10, sticky=W, ipady=3, ipadx=10)
+            .grid(row=4, column=1, pady=5, padx=10, sticky=W, ipady=3, ipadx=10)
         Button(main_frame, text="清空(Esc)", bg="#4d88ff", font=("黑体", 14), fg="white", command=self.clear_send_text,width=20) \
-            .grid(row=3, column=1, pady=5, sticky=W, padx=(220, 0), ipady=3, ipadx=10)
+            .grid(row=4, column=1, pady=5, sticky=W, padx=(220, 0), ipady=3, ipadx=10)
+        Button(main_frame, text="语音通话", bg="#4d88ff", font=("黑体", 14), fg="white", command=self.start_phone,width=20) \
+            .grid(row=4, column=1, pady=5, sticky=W, padx=(420, 0), ipady=3, ipadx=10)
         self.main_frame = main_frame
         main_frame.mainloop()
 

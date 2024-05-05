@@ -1,14 +1,75 @@
 import socket
+import threading
 from threading import Thread
 import math
 import re
 import configparser
+import pyaudio
 
 # online_conn维护一个在线用户
 online_conn = list()
 # conn2user存储socket连接和用户的对应关系
 conn2user = dict()
 
+class Server:
+    def __init__(self):
+        # Fetching the public IP address
+        #self.ip = socket.gethostbyname(socket.gethostname())
+        #self.ip= '192.168.152.127'
+        self.ip= get_wireless_ip()
+        while True:
+            try:
+                self.port = 9808
+                self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.s.bind((self.ip, self.port))
+                break
+            except:
+                print(self.ip)
+                #print("Couldn't bind to that port")
+
+        self.connections = []
+        self.accept_connections()
+
+    def accept_connections(self):
+        self.s.listen(100)
+
+        print('Running on IP: ' + self.ip)
+        print('Running on port: ' + str(self.port))
+
+        while True:
+            c, addr = self.s.accept()
+
+            self.connections.append(c)
+
+            threading.Thread(target=self.handle_client, args=(c, addr,)).start()
+
+    def broadcast(self, sock, data):
+        for client in self.connections:
+            if client != self.s and client != sock:
+                try:
+                    client.send(data)
+                except:
+                    pass
+
+    def handle_client(self, c, addr):
+        while 1:
+            try:
+                data = c.recv(1024)
+                print(data)
+                self.broadcast(c, data)
+
+            except socket.error:
+                c.close()
+def get_wireless_ip():
+    try:
+        s= socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+
+        s.connect(('8.8.8.8',80))
+
+        ip=s.getsockname()[0]
+    finally:
+        s.close()
+    return ip
 
 # 发送带长度的字符串
 def send_string_with_length(_conn, content):
@@ -206,6 +267,11 @@ def transaction(_conn, addr):
         except:
             print(str(addr) + " Connection closing error")
 
+def phone_function():
+    server = Server()
+
+my_thread = threading.Thread(target=phone_function)
+
 
 # main
 if __name__ == "__main__":
@@ -219,7 +285,9 @@ if __name__ == "__main__":
 
         sk = socket.socket()
         sk.bind((val, 8080))
-    
+
+        my_thread.start()
+
         # 最大挂起客户数
         sk.listen(10)
         print("server set up, listening...")
