@@ -10,7 +10,7 @@ import math
 import socket
 import configparser
 import pyaudio
-
+import os
 class Client:
     def __init__(self):
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -136,6 +136,70 @@ class ChatClient:
     def recv_number(self):
         return int.from_bytes(self.sk.recv(4), byteorder='big')
 
+    # 客户端函数，用于发送文件到服务器
+
+    def send_file_to_server(self, file_path):
+        self.sk.sendall(bytes("6", "utf-8"))
+        # 获取文件名
+        file_name = os.path.basename(file_path)
+        # 发送文件名
+        self.sk.sendall(file_name.encode('utf-8'))
+
+        # 获取文件大小
+        file_size = os.path.getsize(file_path)
+        self.sk.sendall(str(file_size).encode('utf-8'))
+
+        # 打开文件以读取
+        with open(file_path, "rb") as file:
+            # 发送文件内容
+            while True:
+                data = file.read(1024)  # 以1024大小不断读取
+                print(data)
+                if len(data) == 0:
+                    print("send null")
+                    break
+                self.sk.sendall(data)
+
+        # 接收服务器确认消息
+        response = self.sk.recv(1024)
+        print(f"Server response: {response.decode('utf-8')}")
+
+    # 客户端函数，用于从服务器下载文件
+    def download_file_from_server(self, file_name):
+        self.sk.sendall(bytes("7", "utf-8"))
+        # 发送文件名
+        self.sk.sendall(file_name.encode('utf-8'))
+        # 读走报文头
+        head = self.sk.recv(1024).decode('utf-8')
+        '''# 接收文件内容长度
+        file_size_str = self.sk.recv(1024).decode('utf-8')
+        print(file_size_str)
+        file_size = int(file_size_str)
+        # print(file_size)'''
+        # 文件路径
+        file_path = f"client_file\\{file_name}"
+        print(file_path)
+        # 检查文件是否存在
+        if os.path.exists(file_path):
+            print("File already exist")
+            return False
+        # 保存文件
+        with open(file_path, "wb") as file:
+            while True:
+                data = self.sk.recv(1024)
+                if not data:
+                    break
+                file.write(data)
+
+
+        # 接收服务器确认消息
+        confirmation_msg = self.sk.recv(1024).decode('utf-8')
+        if confirmation_msg == "File sent":
+            print(f"File {file_name} downloaded")
+        else:
+            print("Error in file transfer")
+        print(f"File {file_name} downloaded")
+
 
 def send_message():
     print("send message:")
@@ -160,6 +224,13 @@ def close_main_window():
     client.sk.close()
     main_frame.main_frame.destroy()
 
+def send_file_to_server():
+    file_path="client_file\\tests.txt"
+    client.send_file_to_server(file_path)
+
+def download_file_from_server():
+    file_name="test.txt"
+    client.download_file_from_server(file_name)
 
 def close_login_window():
     client.sk.close()
@@ -176,7 +247,7 @@ def close_reg_window():
 def goto_main_frame(user):
     login_frame.close()
     global main_frame
-    main_frame = MainPanel(user, send_message, close_main_window,start_phone)
+    main_frame = MainPanel(user, send_message, close_main_window, start_phone, send_file_to_server, download_file_from_server)
     # 新开一个线程专门负责接收并处理数据
     Thread(target=recv_data).start()
     main_frame.show()

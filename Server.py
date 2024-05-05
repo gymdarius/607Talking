@@ -5,7 +5,7 @@ import math
 import re
 import configparser
 import pyaudio
-
+import os
 # online_conn维护一个在线用户
 online_conn = list()
 # conn2user存储socket连接和用户的对应关系
@@ -231,6 +231,76 @@ def handle_private(_conn, addr):
 
     return True
 
+#处理文件上传传输
+def handle_file_upload(_conn, addr):
+    # 接收文件名
+    file_name = _conn.recv(1024).decode('utf-8')
+    print(file_name)
+    file_path = f"file\\{file_name}"
+    print(file_path)
+    # 接收文件内容长度
+    file_size = int(_conn.recv(1024).decode('utf-8'))
+
+    # 打开文件以写入
+    with open(file_path, "wb") as file:
+        # 接收文件内容
+        received_size = 0
+        while received_size < file_size:
+            data = _conn.recv(1024)
+            if not data:
+                break
+            print(data)
+            file.write(data)
+            received_size += len(data)
+        print("get out")
+
+    # 通知客户端文件接收完成
+    _conn.sendall(b"File received")
+    print(f"File {file_name} received from {addr}")
+
+    return True
+
+# 处理文件下载传输
+def handle_file_download(_conn, file_name):
+    # 接收文件名
+    file_name = _conn.recv(1024).decode('utf-8')
+    print(file_name)
+    #文件路径
+    file_path = f"file\\{file_name}"
+    print(file_path)
+    # 检查文件是否存在
+    if not os.path.exists(file_path):
+        print("File not found")
+        _conn.sendall(b"File not found")
+        _conn.close()
+        return False
+
+    # 发送文件名
+    #_conn.sendall(file_name.encode('utf-8'))
+
+    # 获取文件大小
+    file_size = os.path.getsize(file_path)
+    print(file_size)
+    _conn.sendall(str(file_size).encode('utf-8'))
+    print("downloading... ")
+    # 打开文件以读取
+    with open(file_path, "rb") as file:
+        # 发送文件内容
+        while True:
+            data = file.read(1024)
+            print(data)
+            if len(data) == 0:
+                _conn.sendall(data)
+                print("no data")
+                break
+            _conn.sendall(data)
+
+    # 通知客户端文件发送完成
+    _conn.sendall(b"File sent")
+    print(f"File {file_name} sent to client")
+
+    return True
+
 # 处理请求线程的执行方法
 def transaction(_conn, addr):
     try:
@@ -254,6 +324,12 @@ def transaction(_conn, addr):
             elif transac_type == "5":  # 发送在线好友列表
                 print("handle_private")
                 result = handle_private(_conn, addr)
+            elif transac_type == "6":
+                print("handle_file_upload")
+                result = handle_file_upload(_conn, addr)
+            elif transac_type == "7":
+                print("handle_file_download")
+                result = handle_file_download(_conn, addr)
             if not result:
                 break
     except Exception as e:
