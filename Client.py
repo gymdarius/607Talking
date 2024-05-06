@@ -186,7 +186,7 @@ class ChatClient:
         if os.path.exists(file_path):
             print("File already exist")
             return False
-        i=1;
+
         # 保存文件
         with open(file_path, "wb") as file:
             self.file_sk.settimeout(5.0)
