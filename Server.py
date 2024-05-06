@@ -249,7 +249,7 @@ def handle_file_upload(_conn, addr):
             data = _conn.recv(1024)
             if not data:
                 break
-            print(data)
+            #print(data)
             file.write(data)
             received_size += len(data)
         print("get out")
@@ -287,9 +287,9 @@ def handle_file_download(_conn, file_name):
     with open(file_path, "rb") as file:
         # 发送文件内容
         while True:
-            data = file.read(1024)
+            data = file.read(1024*1024*100)
             if len(data) != 0:
-                print(data)
+                #print(data)
                 _conn.sendall(data)
             else:
                 print("no data")
