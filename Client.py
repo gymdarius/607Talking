@@ -70,7 +70,9 @@ class ChatClient:
         val=cf.get("sec_a","server_ip")
 
         self.sk = socket.socket()
+        self.file_sk = socket.socket()
         self.sk.connect((val, 8080))
+        self.file_sk.connect((val, 8081))
         #self.sk.connect(('10.132.3.123', 8080))
 
     # 验证登录
@@ -139,38 +141,39 @@ class ChatClient:
     # 客户端函数，用于发送文件到服务器
 
     def send_file_to_server(self, file_path):
-        self.sk.sendall(bytes("6", "utf-8"))
+        self.file_sk.sendall(bytes("6", "utf-8"))
         # 获取文件名
         file_name = os.path.basename(file_path)
         # 发送文件名
-        self.sk.sendall(file_name.encode('utf-8'))
+        self.file_sk.sendall(file_name.encode('utf-8'))
 
         # 获取文件大小
         file_size = os.path.getsize(file_path)
-        self.sk.sendall(str(file_size).encode('utf-8'))
+        self.file_sk.sendall(str(file_size).encode('utf-8'))
 
         # 打开文件以读取
         with open(file_path, "rb") as file:
             # 发送文件内容
             while True:
                 data = file.read(1024)  # 以1024大小不断读取
-                print(data)
-                if len(data) == 0:
+                if len(data)!=0:
+                    print(data)
+                else:
                     print("send null")
                     break
-                self.sk.sendall(data)
+                self.file_sk.sendall(data)
 
         # 接收服务器确认消息
-        response = self.sk.recv(1024)
+        response = self.file_sk.recv(1024)
         print(f"Server response: {response.decode('utf-8')}")
 
     # 客户端函数，用于从服务器下载文件
     def download_file_from_server(self, file_name):
-        self.sk.sendall(bytes("7", "utf-8"))
+        self.file_sk.sendall(bytes("7", "utf-8"))
         # 发送文件名
-        self.sk.sendall(file_name.encode('utf-8'))
+        self.file_sk.sendall(file_name.encode('utf-8'))
         # 读走报文头
-        head = self.sk.recv(1024).decode('utf-8')
+        #head = self.file_sk.recv(1024).decode('utf-8')
         '''# 接收文件内容长度
         file_size_str = self.sk.recv(1024).decode('utf-8')
         print(file_size_str)
@@ -183,23 +186,22 @@ class ChatClient:
         if os.path.exists(file_path):
             print("File already exist")
             return False
+        i=1;
         # 保存文件
         with open(file_path, "wb") as file:
-            while True:
-                data = self.sk.recv(1024)
-                if not data:
-                    break
-                file.write(data)
-
+            self.file_sk.settimeout(5.0)
+            data = self.file_sk.recv(1024*1024*100)
+            file.write(data)
 
         # 接收服务器确认消息
-        confirmation_msg = self.sk.recv(1024).decode('utf-8')
+        '''
+        confirmation_msg = self.file_sk.recv(1024).decode('utf-8')
         if confirmation_msg == "File sent":
             print(f"File {file_name} downloaded")
         else:
             print("Error in file transfer")
         print(f"File {file_name} downloaded")
-
+        '''
 
 def send_message():
     print("send message:")

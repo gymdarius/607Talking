@@ -281,22 +281,24 @@ def handle_file_download(_conn, file_name):
     # 获取文件大小
     file_size = os.path.getsize(file_path)
     print(file_size)
-    _conn.sendall(str(file_size).encode('utf-8'))
+    #_conn.sendall(str(file_size).encode('utf-8'))
     print("downloading... ")
     # 打开文件以读取
     with open(file_path, "rb") as file:
         # 发送文件内容
         while True:
             data = file.read(1024)
-            print(data)
-            if len(data) == 0:
+            if len(data) != 0:
+                print(data)
                 _conn.sendall(data)
+            else:
                 print("no data")
+                _conn.sendall(data)
                 break
-            _conn.sendall(data)
+           # _conn.sendall(data)
 
     # 通知客户端文件发送完成
-    _conn.sendall(b"File sent")
+    #_conn.sendall(b"File sent")
     print(f"File {file_name} sent to client")
 
     return True
@@ -362,14 +364,20 @@ if __name__ == "__main__":
         sk = socket.socket()
         sk.bind((val, 8080))
 
+        file_sk = socket.socket()
+        file_sk.bind((val, 8081))
+
         my_thread.start()
 
         # 最大挂起客户数
         sk.listen(10)
+        file_sk.listen(10)
         print("server set up, listening...")
         while True:
             conn, addr = sk.accept()
+            conn1, addr1 = file_sk.accept()
             #交给线程处理
             Thread(target=transaction, args=(conn, addr)).start()
+            Thread(target=transaction, args=(conn1, addr1)).start()
     except Exception as e:
         print("exception throwed: " + str(e))
