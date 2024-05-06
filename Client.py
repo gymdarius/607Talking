@@ -1,8 +1,8 @@
 from LoginPanel import LoginPanel
 from MainPanel import MainPanel
 from RegisterPanel import RegisterPanel
-
-from tkinter import messagebox
+import tkinter as tk
+from tkinter import messagebox,Toplevel, Button, Label, Entry
 from threading import Thread
 import time
 import re
@@ -11,6 +11,8 @@ import socket
 import configparser
 import pyaudio
 import os
+
+
 class Client:
     def __init__(self):
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -227,12 +229,60 @@ def close_main_window():
     main_frame.main_frame.destroy()
 
 def send_file_to_server():
-    file_path="client_file\\tests.txt"
-    client.send_file_to_server(file_path)
+    # 创建一个对话框
+    input_window = Toplevel()
+    input_window.title("输入文件名")
+    input_window.geometry("300x100+500+200")
+
+    # 创建一个标签
+    label = Label(input_window, text="文件名:")
+    label.pack()
+
+    # 创建一个输入框
+    entry = Entry(input_window)
+    entry.pack()
+
+    # 创建一个完成按钮，当点击时会关闭输入窗口并保存输入的文件路径
+    def on_complete():
+        global file_path  # 声明file_path为全局变量
+        file_path = entry.get()  # 获取输入的文件路径
+        input_window.destroy()  # 关闭输入窗口
+        # 调用发送文件的函数
+        client.send_file_to_server(file_path)
+
+    complete_button = Button(input_window, text="完成", command=on_complete)
+    complete_button.pack()
+
+    # 启动GUI的事件循环
+    input_window.mainloop()
 
 def download_file_from_server():
-    file_name="test.txt"
-    client.download_file_from_server(file_name)
+    # 创建一个对话框
+    input_window = Toplevel()
+    input_window.title("输入文件名")
+    input_window.geometry("300x100+500+200")
+
+    # 创建一个标签
+    label = Label(input_window, text="请输入要下载的文件名:")
+    label.pack()
+
+    # 创建一个输入框
+    entry = Entry(input_window)
+    entry.pack()
+
+    # 创建一个完成按钮，当点击时会关闭输入窗口并保存输入的文件名
+    def on_complete():
+        global file_name  # 声明file_name为全局变量
+        file_name = entry.get()  # 获取输入的文件名
+        input_window.destroy()  # 关闭输入窗口
+        # 调用下载文件的函数
+        client.download_file_from_server(file_name)
+
+    complete_button = Button(input_window, text="完成", command=on_complete)
+    complete_button.pack()
+
+    # 启动GUI的事件循环
+    input_window.mainloop()
 
 def close_login_window():
     client.sk.close()
