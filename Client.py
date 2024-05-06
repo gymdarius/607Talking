@@ -245,7 +245,8 @@ def send_file_to_server():
     # 创建一个完成按钮，当点击时会关闭输入窗口并保存输入的文件路径
     def on_complete():
         global file_path  # 声明file_path为全局变量
-        file_path = entry.get()  # 获取输入的文件路径
+        file_name = entry.get()  # 获取输入的文件路径
+        file_path = f"client_file\\{file_name}"
         input_window.destroy()  # 关闭输入窗口
         # 调用发送文件的函数
         client.send_file_to_server(file_path)
