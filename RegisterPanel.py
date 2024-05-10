@@ -51,7 +51,7 @@ class RegisterPanel:
             .grid(row=0, column=2, ipady=1)  # 放置用户名输入框
 
         # 创建密码输入标签和文本框，文本框内容以星号(*)显示以隐藏内容
-        Label(form_frame, text="密码(必须包含英文)：", font=("黑体", 12), bg="#f2f2f2", fg="#003366") \
+        Label(form_frame, text="密码：", font=("黑体", 12), bg="#f2f2f2", fg="#003366") \
             .grid(row=1, column=1, pady=20)
         self.key = StringVar()  # 创建密码的文本变量
         Entry(form_frame, textvariable=self.key, show="*", bg="#e3e3e3", width=30) \
@@ -59,11 +59,12 @@ class RegisterPanel:
 
         # 创建确认密码输入标签和文本框
         Label(form_frame, text="确认密码：", font=("黑体", 12), bg="#f2f2f2", fg="#003366") \
-            .grid(row=2, column=1, pady=20)
+            .grid(row=3, column=1, pady=20)
         self.confirm = StringVar()  # 创建确认密码的文本变量
         Entry(form_frame, textvariable=self.confirm, show="*", bg="#e3e3e3", width=30) \
-            .grid(row=2, column=2, ipady=1)
+            .grid(row=3, column=2, ipady=1)
         form_frame.pack(fill=X, padx=20, pady=10)  # 放置注册表单frame，设置水平填充和垂直填充
+
 
         # 创建按钮的frame
         btn_frame = Frame(self.reg_frame, bg="#f2f2f2")

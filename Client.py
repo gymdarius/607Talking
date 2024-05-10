@@ -19,7 +19,7 @@ class Client:
 
         while 1:
             try:
-                self.target_ip = '192.168.152.127'
+                self.target_ip = '10.173.231.197'
                 self.target_port = 9808
 
                 self.s.connect((self.target_ip, self.target_port))
@@ -86,7 +86,7 @@ class ChatClient:
         self.send_string_with_length(key)
         # 获取服务器的返回值，"1"代表通过，“0”代表不通过
         check_result = self.recv_string_by_length(1)
-        return check_result == "1"
+        return check_result
 
     # 注册
     def register_user(self, user, key):
@@ -140,8 +140,6 @@ class ChatClient:
     def recv_number(self):
         return int.from_bytes(self.sk.recv(4), byteorder='big')
 
-    # 客户端函数，用于发送文件到服务器
-
     def send_file_to_server(self, file_path):
         self.file_sk.sendall(bytes("6", "utf-8"))
         # 获取文件名
@@ -149,16 +147,23 @@ class ChatClient:
         # 发送文件名
         self.file_sk.sendall(file_name.encode('utf-8'))
 
+        time.sleep(0.5)
         # 获取文件大小
         file_size = os.path.getsize(file_path)
         self.file_sk.sendall(str(file_size).encode('utf-8'))
 
+        time.sleep(0.5)
+        # 询问服务器已经接收了多少数据
+        self.file_sk.sendall(b"received_size?")
+        received_size = int(self.file_sk.recv(1024).decode())
+        print(received_size)
         # 打开文件以读取
         with open(file_path, "rb") as file:
+            file.seek(received_size)
             # 发送文件内容
             while True:
                 data = file.read(1024)  # 以1024大小不断读取
-                if len(data)!=0:
+                if len(data) != 0:
                     print(data)
                 else:
                     print("send null")
@@ -175,25 +180,41 @@ class ChatClient:
         # 发送文件名
         self.file_sk.sendall(file_name.encode('utf-8'))
         # 读走报文头
-        #head = self.file_sk.recv(1024).decode('utf-8')
-        '''# 接收文件内容长度
-        file_size_str = self.sk.recv(1024).decode('utf-8')
-        print(file_size_str)
+        # head = self.file_sk.recv(1024).decode('utf-8')
+        # 接收文件内容长度
+        file_size_str = self.file_sk.recv(1024).decode('utf-8')
         file_size = int(file_size_str)
-        # print(file_size)'''
+        print(file_size)
         # 文件路径
         file_path = f"client_file\\{file_name}"
         print(file_path)
+
+        # 检查文件是否已存在，如果存在则告诉服务端已接收的数据大小
+        if os.path.exists(file_path):
+            received_size = os.path.getsize(file_path)
+            self.file_sk.sendall(str(received_size).encode('utf-8'))
+            print(received_size)
+        else:
+            received_size = 0
+            self.file_sk.sendall(str(received_size).encode('utf-8'))
+            print(received_size)
+
         # 检查文件是否存在
         if os.path.exists(file_path):
             print("File already exist")
-            return False
 
         # 保存文件
-        with open(file_path, "wb") as file:
-            self.file_sk.settimeout(5.0)
-            data = self.file_sk.recv(1024*1024*100)
-            file.write(data)
+        with open(file_path, "ab") as file:
+            while received_size < file_size:
+                data = self.file_sk.recv(1024)
+                print(data)
+                file.write(data)
+                received_size += len(data)
+                print(received_size)
+            print("get out")
+            # self.file_sk.settimeout(5.0)
+            # data = self.file_sk.recv(1024*1024*100)
+            # file.write(data)
 
         # 接收服务器确认消息
         '''
@@ -204,7 +225,6 @@ class ChatClient:
             print("Error in file transfer")
         print(f"File {file_name} downloaded")
         '''
-
 def send_message():
     print("send message:")
     content = main_frame.get_send_text()
@@ -318,12 +338,14 @@ def login():
         messagebox.showwarning(title="提示", message="用户名或者密码为空")
         return
     print("user: " + user + ", key: " + key)
-    if client.check_user(user, key):
+    if client.check_user(user, key) == '1':
         # 验证成功
         goto_main_frame(user)
-    else:
+    elif client.check_user(user, key) == '0':
         # 验证失败
         messagebox.showerror(title="错误", message="用户名或者密码错误")
+    elif client.check_user(user, key) == '2':
+        messagebox.showerror(title="错误", message="该用户已经登录")
 
 
 # 登陆界面前往注册界面
@@ -343,10 +365,6 @@ def register_submit():
     if not key == confirm:
         messagebox.showwarning("错误", "两次密码输入不一致")
         return
-    contain_en=bool(re.search('[a-z]',key))
-    if(not contain_en):
-        messagebox.showwarning("错误", "密码必须包含英文")
-        return
 
     # 发送注册请求
     result = client.register_user(user, key)
@@ -360,6 +378,9 @@ def register_submit():
     elif result == "2":
         # 未知错误
         messagebox.showerror("错误", "发生未知错误")
+    elif result == "3":
+        # 密码不符合要求
+        messagebox.showerror("错误", "密码必须包含大写字母、小写字母、数字并且长度>=8")
 
 
 # 处理消息接收的线程方法

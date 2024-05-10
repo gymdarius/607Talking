@@ -1,14 +1,65 @@
 from LoginPanel import LoginPanel
 from MainPanel import MainPanel
 from RegisterPanel import RegisterPanel
-
-from tkinter import messagebox
+import tkinter as tk
+from tkinter import messagebox, Toplevel, Button, Label, Entry
 from threading import Thread
 import time
 import re
 import math
 import socket
 import configparser
+import pyaudio
+import os
+
+
+class Client:
+    def __init__(self):
+        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        while 1:
+            try:
+                self.target_ip = '10.173.231.197'
+                self.target_port = 9808
+
+                self.s.connect((self.target_ip, self.target_port))
+
+                break
+            except:
+                print("Couldn't connect to server")
+
+        chunk_size = 1024  # 512
+        audio_format = pyaudio.paInt16
+        channels = 1
+        rate = 20000
+
+        self.p = pyaudio.PyAudio()
+        self.playing_stream = self.p.open(format=audio_format, channels=channels, rate=rate, output=True,
+                                          frames_per_buffer=chunk_size)
+        self.recording_stream = self.p.open(format=audio_format, channels=channels, rate=rate, input=True,
+                                            frames_per_buffer=chunk_size)
+
+        print("Connected to Server")
+
+        # start threads
+        receive_thread = Thread(target=self.receive_server_data).start()
+        self.send_data_to_server()
+
+    def receive_server_data(self):
+        while True:
+            try:
+                data = self.s.recv(1024)
+                self.playing_stream.write(data)
+            except:
+                pass
+
+    def send_data_to_server(self):
+        while True:
+            try:
+                data = self.recording_stream.read(1024)
+                self.s.sendall(data)
+            except:
+                pass
 
 
 class ChatClient:
@@ -22,7 +73,9 @@ class ChatClient:
         val = cf.get("sec_a", "server_ip")
 
         self.sk = socket.socket()
+        self.file_sk = socket.socket()
         self.sk.connect((val, 8080))
+        self.file_sk.connect((val, 8081))
         # self.sk.connect(('10.132.3.123', 8080))
 
     # 验证登录
@@ -34,7 +87,7 @@ class ChatClient:
         self.send_string_with_length(key)
         # 获取服务器的返回值，"1"代表通过，“0”代表不通过
         check_result = self.recv_string_by_length(1)
-        return check_result == "1"
+        return check_result
 
     # 注册
     def register_user(self, user, key):
@@ -88,6 +141,92 @@ class ChatClient:
     def recv_number(self):
         return int.from_bytes(self.sk.recv(4), byteorder='big')
 
+    def send_file_to_server(self, file_path):
+        self.file_sk.sendall(bytes("6", "utf-8"))
+        # 获取文件名
+        file_name = os.path.basename(file_path)
+        # 发送文件名
+        self.file_sk.sendall(file_name.encode('utf-8'))
+
+        time.sleep(0.5)
+        # 获取文件大小
+        file_size = os.path.getsize(file_path)
+        self.file_sk.sendall(str(file_size).encode('utf-8'))
+
+        time.sleep(0.5)
+        # 询问服务器已经接收了多少数据
+        self.file_sk.sendall(b"received_size?")
+        received_size = int(self.file_sk.recv(1024).decode())
+        print(received_size)
+        # 打开文件以读取
+        with open(file_path, "rb") as file:
+            file.seek(received_size)
+            # 发送文件内容
+            while True:
+                data = file.read(1024)  # 以1024大小不断读取
+                if len(data) != 0:
+                    print(data)
+                else:
+                    print("send null")
+                    break
+                self.file_sk.sendall(data)
+
+        # 接收服务器确认消息
+        response = self.file_sk.recv(1024)
+        print(f"Server response: {response.decode('utf-8')}")
+
+    # 客户端函数，用于从服务器下载文件
+    def download_file_from_server(self, file_name):
+        self.file_sk.sendall(bytes("7", "utf-8"))
+        # 发送文件名
+        self.file_sk.sendall(file_name.encode('utf-8'))
+        # 读走报文头
+        # head = self.file_sk.recv(1024).decode('utf-8')
+        # 接收文件内容长度
+        file_size_str = self.file_sk.recv(1024).decode('utf-8')
+        file_size = int(file_size_str)
+        print(file_size)
+        # 文件路径
+        file_path = f"client_file\\{file_name}"
+        print(file_path)
+
+        # 检查文件是否已存在，如果存在则告诉服务端已接收的数据大小
+        if os.path.exists(file_path):
+            received_size = os.path.getsize(file_path)
+            self.file_sk.sendall(str(received_size).encode('utf-8'))
+            print(received_size)
+        else:
+            received_size = 0
+            self.file_sk.sendall(str(received_size).encode('utf-8'))
+            print(received_size)
+
+        # 检查文件是否存在
+        if os.path.exists(file_path):
+            print("File already exist")
+
+        # 保存文件
+        with open(file_path, "ab") as file:
+            while received_size < file_size:
+                data = self.file_sk.recv(1024)
+                print(data)
+                file.write(data)
+                received_size += len(data)
+                print(received_size)
+            print("get out")
+            # self.file_sk.settimeout(5.0)
+            # data = self.file_sk.recv(1024*1024*100)
+            # file.write(data)
+
+        # 接收服务器确认消息
+        '''
+        confirmation_msg = self.file_sk.recv(1024).decode('utf-8')
+        if confirmation_msg == "File sent":
+            print(f"File {file_name} downloaded")
+        else:
+            print("Error in file transfer")
+        print(f"File {file_name} downloaded")
+        '''
+
 
 def send_message():
     print("send message:")
@@ -113,6 +252,65 @@ def close_main_window():
     main_frame.main_frame.destroy()
 
 
+def send_file_to_server():
+    # 创建一个对话框
+    input_window = Toplevel()
+    input_window.title("输入文件名")
+    input_window.geometry("300x100+500+200")
+
+    # 创建一个标签
+    label = Label(input_window, text="文件名:")
+    label.pack()
+
+    # 创建一个输入框
+    entry = Entry(input_window)
+    entry.pack()
+
+    # 创建一个完成按钮，当点击时会关闭输入窗口并保存输入的文件路径
+    def on_complete():
+        global file_path  # 声明file_path为全局变量
+        file_name = entry.get()  # 获取输入的文件路径
+        file_path = f"client_file\\{file_name}"
+        input_window.destroy()  # 关闭输入窗口
+        # 调用发送文件的函数
+        client.send_file_to_server(file_path)
+
+    complete_button = Button(input_window, text="完成", command=on_complete)
+    complete_button.pack()
+
+    # 启动GUI的事件循环
+    input_window.mainloop()
+
+
+def download_file_from_server():
+    # 创建一个对话框
+    input_window = Toplevel()
+    input_window.title("输入文件名")
+    input_window.geometry("300x100+500+200")
+
+    # 创建一个标签
+    label = Label(input_window, text="请输入要下载的文件名:")
+    label.pack()
+
+    # 创建一个输入框
+    entry = Entry(input_window)
+    entry.pack()
+
+    # 创建一个完成按钮，当点击时会关闭输入窗口并保存输入的文件名
+    def on_complete():
+        global file_name  # 声明file_name为全局变量
+        file_name = entry.get()  # 获取输入的文件名
+        input_window.destroy()  # 关闭输入窗口
+        # 调用下载文件的函数
+        client.download_file_from_server(file_name)
+
+    complete_button = Button(input_window, text="完成", command=on_complete)
+    complete_button.pack()
+
+    # 启动GUI的事件循环
+    input_window.mainloop()
+
+
 def close_login_window():
     client.sk.close()
     login_frame.login_frame.destroy()
@@ -128,10 +326,22 @@ def close_reg_window():
 def goto_main_frame(user):
     login_frame.close()
     global main_frame
-    main_frame = MainPanel(user, send_message, close_main_window)
+    main_frame = MainPanel(user, send_message, close_main_window, start_phone, send_file_to_server,
+                           download_file_from_server)
     # 新开一个线程专门负责接收并处理数据
     Thread(target=recv_data).start()
     main_frame.show()
+
+
+def my_function():
+    Client()
+
+
+my_thread = Thread(target=my_function)
+
+
+def start_phone():
+    my_thread.start()
 
 
 def login():
@@ -141,12 +351,14 @@ def login():
         messagebox.showwarning(title="提示", message="用户名或者密码为空")
         return
     print("user: " + user + ", key: " + key)
-    if client.check_user(user, key):
+    if client.check_user(user, key) == '1':
         # 验证成功
         goto_main_frame(user)
-    else:
+    elif client.check_user(user, key) == '0':
         # 验证失败
         messagebox.showerror(title="错误", message="用户名或者密码错误")
+    elif client.check_user(user, key) == '2':
+        messagebox.showerror(title="错误", message="该用户已经登录")
 
 
 # 登陆界面前往注册界面
@@ -166,10 +378,6 @@ def register_submit():
     if not key == confirm:
         messagebox.showwarning("错误", "两次密码输入不一致")
         return
-    contain_en = bool(re.search('[a-z]', key))
-    if (not contain_en):
-        messagebox.showwarning("错误", "密码必须包含英文")
-        return
 
     # 发送注册请求
     result = client.register_user(user, key)
@@ -183,6 +391,9 @@ def register_submit():
     elif result == "2":
         # 未知错误
         messagebox.showerror("错误", "发生未知错误")
+    elif result == "3":
+        # 密码不符合要求
+        messagebox.showerror("错误", "密码必须包含大写字母、小写字母、数字并且长度>=8")
 
 
 # 处理消息接收的线程方法

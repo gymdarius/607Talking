@@ -6,6 +6,7 @@ import re
 import configparser
 import pyaudio
 import os
+import requests
 # online_conn维护一个在线用户
 online_conn = list()
 # conn2user存储socket连接和用户的对应关系
@@ -14,9 +15,8 @@ conn2user = dict()
 class Server:
     def __init__(self):
         # Fetching the public IP address
-        #self.ip = socket.gethostbyname(socket.gethostname())
-        #self.ip= '192.168.152.127'
         self.ip= get_wireless_ip()
+        #self.ip= requests.get('https://api.ipify.org').text
         while True:
             try:
                 self.port = 9808
@@ -130,6 +130,11 @@ def check_user(user, key):
     return False
 
 
+def is_valid_password(password):
+    # 定义正则表达式，检查字符串是否满足要求
+    pattern = r'^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).{8,}$'
+    return bool(re.match(pattern, password))
+
 def add_user(user, key):
     try:
         print("register: user: " + user + ", key: " + key)
@@ -142,6 +147,9 @@ def add_user(user, key):
                     # 用户名存在
                     return "1"
                 user_or_key = not user_or_key
+        if not is_valid_password(key):
+            # 密码不符合要求
+            return "3"
         # 添加用户和密码
         with open("userdata\\user.txt", 'a', encoding="utf-8") as user_data:
             user_data.write(user + "\n")
@@ -171,6 +179,11 @@ def handle_login(_conn, addr):
     key = recv_all_string(_conn)
     check_result = check_user(user, key)
     if check_result:
+        usernames = list(conn2user.values())
+        for username in usernames:
+            if user == str(username):
+                _conn.sendall(bytes("2", "utf-8"))
+                return True
         _conn.sendall(bytes("1", "utf-8"))
         conn2user[_conn] = user
         online_conn.append(_conn)
@@ -240,7 +253,7 @@ def handle_file_upload(_conn, addr):
     print(file_path)
     # 接收文件内容长度
     file_size = int(_conn.recv(1024).decode('utf-8'))
-
+    _conn.settimeout(10)
     # 打开文件以写入
     with open(file_path, "wb") as file:
         # 接收文件内容
@@ -360,6 +373,7 @@ if __name__ == "__main__":
         opts=cf.options("sec_a")
         items=cf.items("sec_a")
         val=cf.get("sec_a","server_ip")
+
 
         sk = socket.socket()
         sk.bind((val, 8080))
