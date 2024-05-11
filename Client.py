@@ -49,10 +49,12 @@ class Client:
         self.send_data_to_server()
 
     def receive_server_data(self):
+        global  phone_flag
         while True:
             try:
                 data = self.s.recv(1024)
-                self.playing_stream.write(data)
+                if phone_flag == 1:
+                    self.playing_stream.write(data)
             except:
                 pass
 
@@ -64,11 +66,11 @@ class Client:
                     data = self.recording_stream.read(1024)
                     print(phone_flag)
                     self.s.sendall(data)
-               # elif phone_flag == 0:
+                elif phone_flag == 0:
                     # 发送白噪声数据
-                    #print("noise")
-                    #noise_data = bytes([random.randint(0, 255) for _ in range(1024)])
-                    #self.s.sendall(noise_data)
+                    print("noise")
+                    noise_data = bytes([random.randint(0, 255) for _ in range(1024)])
+                    self.s.sendall(noise_data)
             except:
                 pass
 
@@ -86,7 +88,6 @@ class ChatClient:
         self.file_sk = socket.socket()
         self.sk.connect((val, 8080))
         self.file_sk.connect((val, 8081))
-        #self.sk.connect(('10.132.3.123', 8080))
 
     # 验证登录
     def check_user(self, user, key):
@@ -190,8 +191,6 @@ class ChatClient:
         self.file_sk.sendall(bytes("7", "utf-8"))
         # 发送文件名
         self.file_sk.sendall(file_name.encode('utf-8'))
-        # 读走报文头
-        # head = self.file_sk.recv(1024).decode('utf-8')
         # 接收文件内容长度
         file_size_str = self.file_sk.recv(1024).decode('utf-8')
         file_size = int(file_size_str)
@@ -223,19 +222,7 @@ class ChatClient:
                 received_size += len(data)
                 print(received_size)
             print("get out")
-            # self.file_sk.settimeout(5.0)
-            # data = self.file_sk.recv(1024*1024*100)
-            # file.write(data)
 
-        # 接收服务器确认消息
-        '''
-        confirmation_msg = self.file_sk.recv(1024).decode('utf-8')
-        if confirmation_msg == "File sent":
-            print(f"File {file_name} downloaded")
-        else:
-            print("Error in file transfer")
-        print(f"File {file_name} downloaded")
-        '''
 def send_message():
     print("send message:")
     content = main_frame.get_send_text()
@@ -251,9 +238,6 @@ def send_message():
     else:
         client.send_message(content)
 
-
-# def close_sk():
-#     client.sk.close()
 
 def close_main_window():
     client.sk.close()
@@ -345,7 +329,7 @@ def start_phone():
     global phone_flag
     global phone_set
     if phone_set == 0:
-        phone_set = 1
+        phone_flag = 1
         my_thread.start()
     elif phone_set == 1:
         phone_flag = 1
