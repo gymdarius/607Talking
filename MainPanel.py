@@ -18,7 +18,7 @@ class MainPanel:
         # 阻止默认的ESC键行为
         return 'break'
 
-    def __init__(self, username, send_func, close_callback,start_phone, upload_file, download_file):
+    def __init__(self, username, send_func, close_callback,start_phone, upload_file, download_file,end_phone):
         self.username = username
         self.friend_list = None
         self.message_text = None
@@ -29,6 +29,7 @@ class MainPanel:
         self.start_phone = start_phone
         self.upload_file = upload_file
         self.download_file = download_file
+        self.end_phone = end_phone
 
     def show(self):
         global main_frame
@@ -114,6 +115,8 @@ class MainPanel:
             .grid(row=4, column=1, pady=5, sticky=W, padx=(220, 0), ipady=3, ipadx=10)
         Button(main_frame, text="语音通话", bg="#4d88ff", font=("黑体", 14), fg="white", command=self.start_phone,width=20) \
             .grid(row=4, column=1, pady=5, sticky=W, padx=(420, 0), ipady=3, ipadx=10)
+        Button(main_frame, text="结束语音", bg="#4d88ff", font=("黑体", 14), fg="white", command=self.end_phone) \
+            .grid(row=3, column=1, pady=5, padx=(520, 0), sticky=W, ipady=3, ipadx=10)
         Button(main_frame, text="上传文件", bg="#4d88ff", font=("黑体", 14), fg="white", command=self.upload_file) \
             .grid(row=3, column=1, pady=5, padx=(320, 0), sticky=W, ipady=3, ipadx=10)
         Button(main_frame, text="下载文件", bg="#4d88ff", font=("黑体", 14), fg="white", command=self.download_file) \

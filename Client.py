@@ -11,15 +11,18 @@ import socket
 import configparser
 import pyaudio
 import os
+import random
 
-
+phone_flag = 1
+phone_set = 0
 class Client:
     def __init__(self):
+        global phone_flag
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         while 1:
             try:
-                self.target_ip = '10.173.231.197'
+                self.target_ip = '8.139.254.59'
                 self.target_port = 9808
 
                 self.s.connect((self.target_ip, self.target_port))
@@ -54,10 +57,18 @@ class Client:
                 pass
 
     def send_data_to_server(self):
+        global phone_flag
         while True:
             try:
-                data = self.recording_stream.read(1024)
-                self.s.sendall(data)
+                if phone_flag == 1:
+                    data = self.recording_stream.read(1024)
+                    print(phone_flag)
+                    self.s.sendall(data)
+               # elif phone_flag == 0:
+                    # 发送白噪声数据
+                    #print("noise")
+                    #noise_data = bytes([random.randint(0, 255) for _ in range(1024)])
+                    #self.s.sendall(noise_data)
             except:
                 pass
 
@@ -320,7 +331,7 @@ def close_reg_window():
 def goto_main_frame(user):
     login_frame.close()
     global main_frame
-    main_frame = MainPanel(user, send_message, close_main_window, start_phone, send_file_to_server, download_file_from_server)
+    main_frame = MainPanel(user, send_message, close_main_window, start_phone, send_file_to_server, download_file_from_server,end_phone)
     # 新开一个线程专门负责接收并处理数据
     Thread(target=recv_data).start()
     main_frame.show()
@@ -330,6 +341,19 @@ def my_function():
 my_thread = Thread(target=my_function)
 def start_phone():
     my_thread.start()
+def start_phone():
+    global phone_flag
+    global phone_set
+    if phone_set == 0:
+        phone_set = 1
+        my_thread.start()
+    elif phone_set == 1:
+        phone_flag = 1
+def end_phone():
+    global phone_flag
+    phone_flag = 0
+    print("now phone_flag = ")
+    print(phone_flag)
 
 def login():
     user, key = login_frame.get_input()
